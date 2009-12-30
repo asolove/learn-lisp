@@ -9,7 +9,7 @@
 (defun dump-db ()
   (dolist (cd *db*)
     (format t "~{~a:~10t~a~%~}~%" cd)))
-
+	
 (defun prompt-read (prompt)
   (format *query-io* "~a: " prompt)
   (force-output *query-io*)
@@ -24,42 +24,34 @@
 
 (defun add-cds ()
   (add-record (prompt-for-cd))
-  (when (y-or-n-p "Add another?") (add-to-db)))
+  (if (y-or-n-p "Add another?")
+      (add-cds)
+      *db*))
 
 (defun save-db (filename)
   (with-open-file (out filename
 		       :direction :output
 		       :if-exists :supersede)
-		  (with-standard-io-syntax
-		   (print *db* out))))
+    (with-standard-io-syntax
+      (print *db* out))))
 
 (defun load-db (filename)
   (with-open-file (in filename)
-		  (with-standard-io-syntax
-		   (setf *db* (read in)))))
+    (with-standard-io-syntax
+      (setf *db* (read in)))))
 
 (defun select (query)
   (remove-if-not query *db*))
 
-(defun mapplist (f p-list)
-  (mapcar #'(lambda (lst) (apply f lst)) (alist->plist p-list)))
+(defun make-comparison-expr (key val)
+  `(equal (getf cd ,key) ,val))
 
-(defun alist->plist (a-list)
-  (if (null a-list)
-      '()
-    (cons (list (car a-list) (cadr a-list))
-	  (alist->plist (cddr a-list)))))
+(defun make-comparisons-list (fields)
+  (loop while fields
+       collecting (make-comparison-expr (pop fields) (pop fields))))
 
-(defun all (&rest vals)
-  (cond ((null vals) t)
-	((null (car vals)) '())
-	(t (apply #'all (cdr vals)))))
-
-(defun where (&rest filters)
-  (lambda (cd) 
-    (apply #'all (mapplist #'(lambda (key val)
-			       (equal (getf cd key) val))
-			   filters))))
+(defmacro where (&rest fields)
+  `(lambda (cd) (and ,@(make-comparisons-list fields))))
 
 (defun set-values (&rest vals)
   (lambda (cd)
@@ -70,3 +62,6 @@
 (defun update (set-f where-f)
   (mapcar set-f
 	  (remove-if-not where-f *db*)))
+
+(defun delete-rows (set-f)
+  (setf *db* (remove-if set-f *db*)))
