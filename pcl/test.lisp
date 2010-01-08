@@ -1,4 +1,7 @@
 (defmacro all (&body body)
   "Evaluates all subforms and returns NIL if any return NIL"
-  `(let ((res t))
-     (loop for form in ,body collecting (and form res))))
+  (with-gensyms (result)
+    `(let ((,result t))
+       ,@(loop for form in body 
+	    collecting `(unless ,form (setf ,result nil)))
+       ,result)))

@@ -50,8 +50,12 @@
   (loop while fields
        collecting (make-comparison-expr (pop fields) (pop fields))))
 
+; Will evaluate arguments more than once
 (defmacro where (&rest fields)
   `(lambda (cd) (and ,@(make-comparisons-list fields))))
+
+(defun where (&rest fields)
+  (lambda (cd) ))
 
 (defun set-values (&rest vals)
   (lambda (cd)
