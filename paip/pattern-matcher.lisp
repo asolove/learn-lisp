@@ -1,6 +1,3 @@
-
-
-
 ;; Bindings forms
 
 (defvar no-bindings '((t . t)))
@@ -103,4 +100,29 @@
 
 ;; Multiple (general) pattern 
 (defun multiple-pattern-p (pattern)
-  nil)
+  (and (consp pattern) (consp (car pattern)) (symbolp (car (car pattern)))
+       (multiple-pattern-fn (car (car pattern)))))
+
+(defun multiple-pattern-fn (symbol)
+  (get symbol 'multiple-pattern))
+
+(defun multiple-pattern-match (pattern input bindings)
+  (funcall (multiple-pattern-fn (car (car pattern)))
+	   pattern input bindings))
+
+(setf (get '?* 'multiple-pattern) 'match-star)
+
+(defun match-star (pattern input bindings &optional (start 0))
+  "Match pattern zero or more times with backtracking
+   ((?* ?x) 2) '(0 1 2) no-bindings => '((?x . (0 1)))"
+  (cond ((> start (length input)) fail)
+	((pat-match (cdr pattern) (subseq input start (length input))
+		    (variable-pattern-match (second (car pattern)) (subseq input 0 start) bindings)))
+	(t (match-star pattern input bindings (+ start 1)))))
+
+(defun match-star (pattern input bindings &optional (start 0))
+  (let ((var (second (car pattern)))
+	(rest-pattern (rest pattern)))
+    (if (null rest-pattern)
+	(variable-pattern-match var input bindings)
+	)))
